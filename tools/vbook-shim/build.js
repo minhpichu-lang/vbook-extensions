@@ -15,8 +15,13 @@ zip.addLocalFile(path.join(extDir, "icon.png"));
 for (const f of fs.readdirSync(path.join(extDir, "src")).sort()) {
   if (f.endsWith(".js") && !f.startsWith("_")) zip.addLocalFile(path.join(extDir, "src", f), "src");
 }
-// Cố định thời gian file trong zip: cùng nội dung -> cùng zip, GitHub Actions không tạo commit thừa
-for (const e of zip.getEntries()) e.header.time = new Date(2000, 0, 1);
+// Cố định thời gian, hệ điều hành tạo zip (Unix) và quyền file (644) trong zip: cùng nội dung -> cùng zip trên
+// Windows lẫn GitHub Actions (Linux), không tạo commit thừa
+for (const e of zip.getEntries()) {
+  e.header.time = new Date(2000, 0, 1);
+  e.header.made = 788;
+  e.header.attr = 0o100644 * 0x10000;
+}
 zip.writeZip(out);
 console.log(`${plugin.metadata.name} v${plugin.metadata.version} -> ${out}`);
 for (const e of zip.getEntries()) console.log("  " + e.entryName + "  " + e.header.size + " B");
