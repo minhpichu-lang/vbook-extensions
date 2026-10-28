@@ -1,7 +1,7 @@
 {
   "metadata": {
     "name": "VinaHentai",
-    "author": "nguyen2242x",
+    "author": "Pichu",
     "version": 3,
     "source": "https://vinahentai.pics",
     "regexp": "^https?://(www\\.)?vinahentai\\.[a-z0-9.]+/truyen-hentai/[^/]+/?$",

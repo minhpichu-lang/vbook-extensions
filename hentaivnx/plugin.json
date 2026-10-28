@@ -1,7 +1,7 @@
 {
   "metadata": {
     "name": "HentaiVNX",
-    "author": "nguyen2242x",
+    "author": "Pichu",
     "version": 1,
     "source": "https://www.hentaivnx.live",
     "regexp": "^https?://(www\\.)?hentaivnx\\.[a-z0-9.]+/truyen-hentai/[^/]+-\\d+/?$",
