@@ -3,7 +3,7 @@
   "private": true,
   "description": "Ch\u00e1\u00ba\u00a1y th\u00e1\u00bb\u00ad script vbook b\u00e1\u00ba\u00b1ng Node (gi\u00e1\u00ba\u00a3 l\u00e1\u00ba\u00adp fetch/Html/Response b\u00e1\u00ba\u00b1ng cheerio + sync-request)",
   "dependencies": {
-    "adm-zip": "^0.5.16",
+    "adm-zip": "^0.6.1",
     "cheerio": "^1.0.0",
     "sync-request": "^6.1.0"
   }
