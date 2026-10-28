@@ -1,0 +1,30 @@
+{
+  "metadata": {
+    "name": "VinaHentai",
+    "author": "nguyen2242x",
+    "version": 3,
+    "source": "https://vinahentai.pics",
+    "regexp": "^https?://(www\\.)?vinahentai\\.[a-z0-9.]+/truyen-hentai/[^/]+/?$",
+    "description": "Đọc truyện hentai 18+ vietsub từ vinahentai.pics",
+    "locale": "vi_VN",
+    "tag": "nsfw",
+    "type": "comic"
+  },
+  "script": {
+    "home": "home.js",
+    "genre": "genre.js",
+    "detail": "detail.js",
+    "search": "search.js",
+    "toc": "toc.js",
+    "chap": "chap.js"
+  },
+  "config": {
+    "DOMAIN": {
+      "title": "Tên miền",
+      "subtitle": "Khi web đổi đuôi, nhập domain mới (vd. https://vinahentai.pics). Để trống = mặc định",
+      "default": "https://vinahentai.pics",
+      "mode": "input",
+      "format": "text"
+    }
+  }
+}

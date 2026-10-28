@@ -1,0 +1,21 @@
+{
+  "metadata": {
+    "name": "Sáng Tác Việt",
+    "author": "nguyen2242x",
+    "version": 14,
+    "source": "https://sangtacviet.com",
+    "regexp": "^https?://(www\\.)?sangtacviet\\.[a-z]+/truyen/[^/]+/1/[^/]+/?$",
+    "description": "Đọc truyện dịch tự động (convert) từ sangtacviet.com: qidian, fanqie, faloo, ciweimao...",
+    "locale": "vi_VN",
+    "tag": "",
+    "type": "novel"
+  },
+  "script": {
+    "home": "home.js",
+    "genre": "genre.js",
+    "detail": "detail.js",
+    "search": "search.js",
+    "toc": "toc.js",
+    "chap": "chap.js"
+  }
+}

@@ -1,0 +1,32 @@
+# Mỗi lần push lên main: đóng gói lại plugin.zip của mọi extension, đồng bộ version vào index plugin.json
+# rồi commit lại nếu có thay đổi. vbook đọc index qua raw.githubusercontent.com và thấy bản mới khi version tăng.
+name: Build plugins
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+        working-directory: tools/vbook-shim
+      - run: node build-all.js
+        working-directory: tools/vbook-shim
+      - name: Commit plugin.zip / index
+        run: |
+          git add -A -- '*/plugin.zip' plugin.json
+          if git diff --cached --quiet; then echo "Không có thay đổi"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: rebuild plugin zips [skip ci]"
+          git push

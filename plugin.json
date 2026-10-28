@@ -1,0 +1,41 @@
+{
+  "metadata": {
+    "author": "nguyen2242x",
+    "description": "Nguồn extension vbook cá nhân. Thêm URL raw của file này vào vbook: Khám phá > ⋮ > T.cả phần mở rộng > ⋮ > Quản lý nguồn."
+  },
+  "data": [
+    {
+      "name": "VinaHentai",
+      "author": "nguyen2242x",
+      "path": "https://raw.githubusercontent.com/minhpichu-lang/vbook-extensions/main/vinahentai/plugin.zip",
+      "version": 3,
+      "source": "https://vinahentai.click",
+      "icon": "https://raw.githubusercontent.com/minhpichu-lang/vbook-extensions/main/vinahentai/icon.png",
+      "description": "Đọc truyện hentai 18+ vietsub từ vinahentai.click",
+      "type": "comic",
+      "locale": "vi_VN"
+    },
+    {
+      "name": "Sáng Tác Việt",
+      "author": "nguyen2242x",
+      "path": "https://raw.githubusercontent.com/minhpichu-lang/vbook-extensions/main/sangtacviet/plugin.zip",
+      "version": 14,
+      "source": "https://sangtacviet.com",
+      "icon": "https://raw.githubusercontent.com/minhpichu-lang/vbook-extensions/main/sangtacviet/icon.png",
+      "description": "Đọc truyện dịch tự động (convert) từ sangtacviet.com: qidian, fanqie, faloo, ciweimao...",
+      "type": "novel",
+      "locale": "vi_VN"
+    },
+    {
+      "name": "HentaiVNX",
+      "author": "nguyen2242x",
+      "path": "https://raw.githubusercontent.com/minhpichu-lang/vbook-extensions/main/hentaivnx/plugin.zip",
+      "version": 1,
+      "source": "https://www.hentaivnx.live",
+      "icon": "https://raw.githubusercontent.com/minhpichu-lang/vbook-extensions/main/hentaivnx/icon.png",
+      "description": "Đọc truyện hentai 18+ vietsub từ hentaivnx.live",
+      "type": "comic",
+      "locale": "vi_VN"
+    }
+  ]
+}
