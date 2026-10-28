@@ -337,9 +337,11 @@ function renderContent(data, host, bookid, pack) {
   if (host == "ciweimao") s = s.replace(/<span>[\s\S]*?<\/span>/g, "");
   // Bỏ lớp bọc <i ...>từ</i>, giữ nghĩa đã dịch (hoặc tên nếu chữ gốc của vài từ liền nhau khớp)
   var maps = [BOOK_NAME_MAP[host + "/" + bookid] || {}, pack.names, NAME_MAP];
+  var pending = [];
   s = s.replace(/<i(?:\s[^>]*)?>[\s\S]*?<\/i>(?:[ \t]*<i(?:\s[^>]*)?>[\s\S]*?<\/i>)*/g, function (run) {
-    return replaceNames(run, maps);
+    return replaceNames(run, maps, pending);
   });
+  if (pending.length > 0) s = fillSplitNames(s, pending);
   // Ngắt đoạn
   s = s.replace(/<\/p>\s*<p[^>]*>/g, "\n").replace(/<br\s*\/?>/gi, "\n").replace(/<\/?p[^>]*>/g, "\n");
   // Giữ lại ảnh, bỏ mọi thẻ khác
@@ -369,32 +371,101 @@ function renderContent(data, host, bookid, pack) {
 
 // Một dãy từ <i> liền nhau -> văn bản, thay các nhóm 1-6 từ có chữ gốc ghép lại trùng một tên.
 // maps: các bảng tên theo thứ tự ưu tiên (BOOK_NAME_MAP của truyện, gói name của truyện, NAME_MAP).
-function replaceNames(run, maps) {
+// pending: nhận các chỗ tên bị cắt dính vào từ sau, thay tạm bằng @@TR<n>@@ (xem fillSplitNames).
+function replaceNames(run, maps, pending) {
   var tokens = [];
   var re = /([ \t]*)<i(\s[^>]*)?>([\s\S]*?)<\/i>/g, m;
   while ((m = re.exec(run)) != null) {
     var t = /(?:^|[\s'"])t=['"]([^'"]*)['"]/.exec(m[2] || "");
     tokens.push({ sep: m[1], t: t ? t[1] : "", text: m[3] });
   }
-  var out = "", name = null;
+  var out = "";
   for (var i = 0; i < tokens.length; ) {
-    var k = Math.min(6, tokens.length - i);
-    for (; k > 0; k--) {
-      var key = "";
-      for (var j = i; j < i + k; j++) key += tokens[j].t;
-      name = null;
-      for (var n = 0; key && n < maps.length && name == null; n++) if (maps[n].hasOwnProperty(key)) name = maps[n][key];
-      if (name != null) break;
+    var hit = matchName(tokens, i, maps);
+    if (hit != null) {
+      out += tokens[i].sep + hit.name;
+      i += hit.k;
+      continue;
     }
-    if (k > 0) {
-      out += tokens[i].sep + name;
-      i += k;
-    } else {
-      out += tokens[i].sep + tokens[i].text;
-      i++;
+    // Server tách tên dính vào từ sau: 方南无语 -> 方|南无|语 ("phương nam mô ngữ", 南无 = nam mô),
+    // 方南松了口气 -> 方|南松|... ("Phương Nam Tùng"). Chỉ xét tên riêng của truyện (BOOK_NAME_MAP, gói name):
+    // tên chung như 和真 thì 我和真的 -> 和|真的 là tách đúng. Phần dư của từ bị cắt ghép với từ sau rồi dịch lại.
+    hit = matchSplitName(tokens, i, [maps[0], maps[1]]);
+    if (hit != null) {
+      var j = i + hit.k, fallback = tokens[i].text;
+      for (var x = i + 1; x < j; x++) fallback += tokens[x].sep + tokens[x].text;
+      var text = hit.rest;
+      if (j < tokens.length && tokens[j].t && matchName(tokens, j, maps) == null) {
+        text += tokens[j].t;
+        fallback += tokens[j].sep + tokens[j].text;
+        j++;
+      }
+      pending.push({ name: hit.name, text: text, fallback: fallback });
+      out += tokens[i].sep + "@@TR" + (pending.length - 1) + "@@";
+      i = j;
+      continue;
     }
+    out += tokens[i].sep + tokens[i].text;
+    i++;
   }
   return out;
+}
+
+// Nhóm 1-6 từ bắt đầu ở tokens[i] có chữ gốc ghép lại trùng một tên -> { k: số từ, name }.
+function matchName(tokens, i, maps) {
+  for (var k = Math.min(6, tokens.length - i); k > 0; k--) {
+    var key = "";
+    for (var j = i; j < i + k; j++) key += tokens[j].t;
+    for (var n = 0; key && n < maps.length; n++) if (maps[n].hasOwnProperty(key)) return { k: k, name: maps[n][key] };
+  }
+  return null;
+}
+
+// Tên bắt đầu ở tokens[i] nhưng kết thúc giữa từ cuối của nhóm >= 2 từ -> { k, name, rest: chữ gốc còn dư }.
+// Tên nằm gọn ở đầu một từ (鞠川老师 = "Marikawa-sensei") là server đã nhận đúng cả cụm, không tách.
+function matchSplitName(tokens, i, maps) {
+  for (var k = Math.min(6, tokens.length - i); k > 1; k--) {
+    var prefix = "";
+    for (var j = i; j < i + k - 1; j++) prefix += tokens[j].t;
+    var last = tokens[i + k - 1].t;
+    for (var c = last.length - 1; c > 0; c--) {
+      var key = prefix + last.substring(0, c);
+      if (key.length < 2) continue;
+      for (var n = 0; n < maps.length; n++) if (maps[n].hasOwnProperty(key)) return { k: k, name: maps[n][key], rest: last.substring(c) };
+    }
+  }
+  return null;
+}
+
+// Dịch lại phần dư sau tên bị cắt (无 + 语 -> 无语 = "im lặng") bằng API dịch của site, một request cho cả chương.
+// Lỗi thì giữ nguyên bản dịch cũ của cả cụm.
+function fillSplitNames(s, pending) {
+  var texts = [];
+  for (var i = 0; i < pending.length; i++) texts.push(pending[i].text);
+  var tr = translate(texts);
+  return s.replace(/@@TR(\d+)@@/g, function (m, idx) {
+    var p = pending[parseInt(idx, 10)], t = tr ? tr[parseInt(idx, 10)] : "";
+    if (!t) return p.fallback;
+    // API viết hoa chữ đầu như đầu câu
+    return p.name + " " + t.charAt(0).toLowerCase() + t.substring(1);
+  });
+}
+
+// API dịch máy của site (web dùng khi người đọc chọn cụm từ): các đoạn nối bằng <split>, trả về đúng thứ tự.
+// Trả về null nếu lỗi.
+function translate(texts) {
+  var headers = { "Content-Type": "application/x-www-form-urlencoded", Referer: BASE + "/" };
+  for (var k in HEADERS) headers[k] = HEADERS[k];
+  try {
+    var r = fetch(BASE + "/index.php", { method: "POST", headers: headers, body: { sajax: "trans", ngmar: "trans", content: texts.join("<split>") } });
+    if (!r.ok) return null;
+    var out = ("" + r.text()).split("<split>");
+    if (out.length != texts.length) return null;
+    for (var i = 0; i < out.length; i++) out[i] = out[i].trim();
+    return out;
+  } catch (e) {
+    return null;
+  }
 }
 
 // Bỏ ký hiệu ngăn cảnh mà trình đọc audio đọc lên thành tiếng ồn. Trả về "" nếu cả đoạn là rác:
