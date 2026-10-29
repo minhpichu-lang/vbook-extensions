@@ -2,7 +2,7 @@
   "metadata": {
     "name": "Sáng Tác Việt",
     "author": "Pichu",
-    "version": 15,
+    "version": 16,
     "source": "https://sangtacviet.com",
     "regexp": "^https?://(www\\.)?sangtacviet\\.[a-z]+/truyen/[^/]+/1/[^/]+/?$",
     "description": "Đọc truyện dịch tự động (convert) từ sangtacviet.com: qidian, fanqie, faloo, ciweimao...",

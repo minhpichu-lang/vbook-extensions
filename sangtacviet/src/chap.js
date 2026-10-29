@@ -13,14 +13,19 @@
 // Nội dung `data` là bản dịch máy: mỗi từ bọc trong <i h='hán việt' t='gốc' v='nghĩa'>từ</i>, đoạn ngắt bằng xuống dòng.
 load("site.js");
 
-// Khoảng cách tối thiểu giữa hai lần tải chương (ms). Site giới hạn số chương đọc theo IP, vượt là bắt quét
-// captcha (mã 21), và lần vi phạm sau bị khóa lâu hơn (đo 10/2026: lần 1 ~2 phút, lần 2 >25 phút).
-// Đo trên điện thoại sau khi quét captcha: cách 3 s -> bị bắt ở chương thứ 8; cách 12 s -> chương thứ 10;
-// cách 20 s -> 12 chương liên tiếp vẫn đọc được.
+// Giãn nhịp tải chương. Site giới hạn số chương đọc theo IP, vượt là bắt quét captcha (mã 21), và lần vi phạm
+// sau bị khóa lâu hơn (đo 10/2026: lần 1 ~2 phút, lần 2 >25 phút). Đo trên điện thoại sau khi quét captcha:
+// cách 3 s -> bị bắt ở chương thứ 8; cách 12 s -> chương thứ 10; cách 20 s -> 12 chương liên tiếp vẫn đọc được.
+// Số liệu khớp với "token bucket" ~7 chương, hồi 1 chương mỗi 30-49 s (khi đó cách 20 s đều đặn sẽ bị bắt ở
+// khoảng chương 13-17) hoặc với 2 cửa sổ trượt (<=7 chương/~1 phút và <=9 chương/~2-3 phút). Bucket phía client
+// dưới đây an toàn với cả hai: tải liền tối đa CHAP_BURST chương (cách nhau CHAP_MIN_GAP_MS), sau đó mỗi
+// CHAP_REFILL_MS hồi một lượt. Đọc bình thường (vài phút/chương) thì bucket luôn đầy, chương mở ra tải ngay.
 // vbook gọi chap.js song song (tải trước chương, tải truyện) nên sleep riêng trong từng lần gọi không giãn được:
-// các lần gọi dùng chung một mốc "lượt kế tiếp" trong localStorage (lưu được giữa các lần gọi) và chờ tới lượt.
-// Đặt 0 để tắt.
-var CHAP_INTERVAL_MS = 20000;
+// các lần gọi dùng chung trạng thái bucket trong localStorage (lưu được giữa các lần gọi) và chờ tới lượt.
+// Đặt CHAP_REFILL_MS = 0 để tắt.
+var CHAP_BURST = 5;
+var CHAP_REFILL_MS = 50000;
+var CHAP_MIN_GAP_MS = 3000;
 
 // Tên thay theo chữ gốc (thuộc tính t của từng từ). Dùng cho tên mà bản dịch máy ra cụm từ thường, không thay
 // được bằng danh sách thay thế tên của vbook vì trùng nghĩa đen: 赤瞳 -> "mắt đỏ" (cả "hốc mắt đỏ lên"...).
@@ -160,6 +165,14 @@ var BOOK_NAME_MAP = {
   }
 };
 
+// Gói name theo fandom ("Tải name đặc biệt" trên web) áp dụng cho truyện: "<nguồn>/<id truyện>": [id gói, ...],
+// gói đứng trước được ưu tiên. Tìm id gói: https://sangtacviet.com/io/namepack/query?q=<tên fandom> (JSON, trường
+// id, name, downloadnum, content), vd 34 = Akame ga Kill, 4037 = Naruto/Boruto. Gói fandom không gắn với truyện
+// nên chỉ lấy tên >= 2 chữ (bỏ "$兰=Ran"...) và đứng sau BOOK_NAME_MAP, name mặc định và gói name của truyện.
+var BOOK_PACKS = {
+  // "faloo/123456": [34]
+};
+
 function execute(url) {
   var info = parseBookUrl(url);
   if (info == null || !info.cid) return Response.error("URL chương không đúng dạng /truyen/<nguồn>/1/<id>/<chương>/");
@@ -204,7 +217,9 @@ function execute(url) {
   // chỉ hiển thị đúng với font của site -> không đọc được ngoài web
   if (/[\uE000-\uF8FF]/.test(data)) return Response.error("Nội dung được mã hóa bằng font riêng của site (truyện sáng tác), extension chưa hỗ trợ");
 
-  var content = renderContent(data, info.host, info.bookid, loadNamePack(info.host, info.bookid));
+  // defaultname: name mặc định chủ truyện/admin đặt cho truyện (web áp dụng phía trình duyệt), cùng định dạng gói name
+  var defaults = parseNameText("" + (json.defaultname || ""), 1);
+  var content = renderContent(data, info.host, info.bookid, loadNamePack(info.host, info.bookid), defaults, loadBookPacks(info.host, info.bookid));
   if (!content) return Response.error("Chương không có nội dung (nguồn gốc bị khóa hoặc trống)");
   return Response.success(content);
 }
@@ -277,15 +292,76 @@ function loadNamePack(host, bookid) {
   return pack;
 }
 
-// Giữ một lượt tải chương (cách lượt trước CHAP_INTERVAL_MS) rồi chờ tới lượt đó.
+// Đọc một gói name dạng văn bản (defaultname, gói fandom): "$中文=Tên", "#中文=Tên", "中文=Tên" (gói cũ không có
+// tiền tố) và "@chữ|việt=Chữ|Việt". Mục gặp trước thắng. minLen: số chữ Trung tối thiểu của một tên.
+function parseNameText(text, minLen) {
+  var out = { names: {}, words: [] }, seen = {};
+  var lines = text.split("\n");
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].trim(), eq = line.indexOf("=");
+    if (eq < 1) continue;
+    var type = line.charAt(0), src = line.substring(0, eq), dst = line.substring(eq + 1).trim();
+    if (type == "$" || type == "#" || type == "@") src = src.substring(1);
+    if (!dst || dst.length > 40) continue;
+    if (type == "@") {
+      src = src.split("|").join(" ");
+      dst = dst.split("|").join(" ");
+      if (src && src != dst && !seen[src]) { seen[src] = true; out.words.push([src, dst]); }
+    } else if (src.length >= minLen && /^[㐀-鿿]+$/.test(src) && !out.names.hasOwnProperty(src)) {
+      out.names[src] = dst;
+    }
+  }
+  out.words.sort(function (a, b) { return b[0].length - a[0].length; });
+  return out;
+}
+
+// Các gói fandom của truyện (BOOK_PACKS), gộp lại theo thứ tự ưu tiên. Mỗi gói (vài KB) cache localStorage
+// FANDOM_PACK_TTL_MS; tải lỗi thì dùng cache cũ.
+var FANDOM_PACK_TTL_MS = 7 * 24 * 3600 * 1000;
+
+function loadBookPacks(host, bookid) {
+  var ids = BOOK_PACKS[host + "/" + bookid] || [], text = "";
+  for (var i = 0; i < ids.length; i++) {
+    var key = "fandompack:" + ids[i], cached = null;
+    try { cached = JSON.parse("" + localStorage.getItem(key)); } catch (e) { cached = null; }
+    if (!cached || Date.now() - cached.time >= FANDOM_PACK_TTL_MS) {
+      var t = downloadPack(ids[i]);
+      if (t != null) {
+        cached = { time: Date.now(), text: t };
+        try { localStorage.setItem(key, JSON.stringify(cached)); } catch (e) {}
+      }
+    }
+    if (cached) text += cached.text + "\n";
+  }
+  return parseNameText(text, 2);
+}
+
+// Nội dung gói name theo id (web: nút "Tải" trong "Gói Name Đặc Biệt"), không cần cookie. Trả về null nếu lỗi.
+function downloadPack(id) {
+  var headers = { "Content-Type": "application/x-www-form-urlencoded", Referer: BASE + "/" };
+  for (var k in HEADERS) headers[k] = HEADERS[k];
+  try {
+    var r = fetch(BASE + "/index.php?ngmar=downcust", { method: "POST", headers: headers, body: { ajax: "downcustomname", packid: "" + id } });
+    if (!r.ok) return null;
+    var t = "" + r.text();
+    return t == "error" ? null : t;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Giữ một lượt tải chương theo bucket rồi chờ tới lượt đó. Trạng thái: tat = thời điểm bucket đầy lại nếu
+// không ai tải thêm (mỗi lượt cộng CHAP_REFILL_MS), last = lượt gần nhất. Lượt mới được bắt đầu khi bucket
+// còn chỗ (tat - now <= (CHAP_BURST - 1) * CHAP_REFILL_MS) và cách lượt trước CHAP_MIN_GAP_MS.
 function waitForTurn() {
-  if (CHAP_INTERVAL_MS <= 0) return;
-  // getItem/setItem không nguyên tử: lệch ngẫu nhiên để các lần gọi song song không đọc cùng một mốc
+  if (CHAP_REFILL_MS <= 0) return;
+  // getItem/setItem không nguyên tử: lệch ngẫu nhiên để các lần gọi song song không đọc cùng một trạng thái
   sleep(Math.floor(Math.random() * 500));
-  var now = Date.now();
-  var next = parseInt("" + localStorage.getItem("chap_next_turn"), 10);
-  var turn = next > now ? next : now;
-  localStorage.setItem("chap_next_turn", "" + (turn + CHAP_INTERVAL_MS));
+  var now = Date.now(), st = null;
+  try { st = JSON.parse("" + localStorage.getItem("chap_bucket")); } catch (e) { st = null; }
+  var tat = st && st.tat > now ? st.tat : now;
+  var turn = Math.max(now, tat - (CHAP_BURST - 1) * CHAP_REFILL_MS, (st && st.last || 0) + CHAP_MIN_GAP_MS);
+  localStorage.setItem("chap_bucket", JSON.stringify({ tat: tat + CHAP_REFILL_MS, last: turn }));
   if (turn > now) sleep(turn - now);
 }
 
@@ -325,8 +401,13 @@ function isPoisoned(json, cid) {
 }
 
 // Chuyển HTML dịch máy của site thành HTML sạch: mỗi đoạn một <p>.
-function renderContent(data, host, bookid, pack) {
-  if (!pack) pack = { names: {}, words: [] };
+function renderContent(data, host, bookid, pack, defaults, fandom) {
+  var none = { names: {}, words: [] };
+  if (!pack) pack = none;
+  if (!defaults) defaults = none;
+  if (!fandom) fandom = none;
+  var words = defaults.words.concat(pack.words, fandom.words);
+  words.sort(function (a, b) { return b[0].length - a[0].length; });
   var s = data;
   if (s.indexOf("chat-") >= 0) return s; // truyện dạng "chat", giữ nguyên HTML của site
   // Ghi chú của site ở đầu chương (span chữ xám): "@Bạn đang đọc bản lưu trong hệ thống", "Đọc tại sangtacviet.com",
@@ -336,7 +417,7 @@ function renderContent(data, host, bookid, pack) {
   if (host == "dich") s = s.replace(/<(?=[^i\/])/g, "&lt;");
   if (host == "ciweimao") s = s.replace(/<span>[\s\S]*?<\/span>/g, "");
   // Bỏ lớp bọc <i ...>từ</i>, giữ nghĩa đã dịch (hoặc tên nếu chữ gốc của vài từ liền nhau khớp)
-  var maps = [BOOK_NAME_MAP[host + "/" + bookid] || {}, pack.names, NAME_MAP];
+  var maps = [BOOK_NAME_MAP[host + "/" + bookid] || {}, defaults.names, pack.names, fandom.names, NAME_MAP];
   var pending = [];
   s = s.replace(/<i(?:\s[^>]*)?>[\s\S]*?<\/i>(?:[ \t]*<i(?:\s[^>]*)?>[\s\S]*?<\/i>)*/g, function (run) {
     return replaceNames(run, maps, pending);
@@ -360,7 +441,7 @@ function renderContent(data, host, bookid, pack) {
   for (var i = 0; i < lines.length; i++) {
     var line = cleanJunk(lines[i].replace(/\s+/g, " ").trim());
     if (!line) continue;
-    line = replaceWords(line, pack.words);
+    line = replaceWords(line, words);
     line = line.replace(/@@IMG(\d+)@@/g, function (m, idx) {
       return "<img src=\"" + imgs[parseInt(idx, 10)] + "\">";
     });
@@ -370,7 +451,8 @@ function renderContent(data, host, bookid, pack) {
 }
 
 // Một dãy từ <i> liền nhau -> văn bản, thay các nhóm 1-6 từ có chữ gốc ghép lại trùng một tên.
-// maps: các bảng tên theo thứ tự ưu tiên (BOOK_NAME_MAP của truyện, gói name của truyện, NAME_MAP).
+// maps: các bảng tên theo thứ tự ưu tiên (BOOK_NAME_MAP của truyện, defaultname, gói name của truyện, gói fandom,
+// NAME_MAP).
 // pending: nhận các chỗ tên bị cắt dính vào từ sau, thay tạm bằng @@TR<n>@@ (xem fillSplitNames).
 function replaceNames(run, maps, pending) {
   var tokens = [];
@@ -388,9 +470,9 @@ function replaceNames(run, maps, pending) {
       continue;
     }
     // Server tách tên dính vào từ sau: 方南无语 -> 方|南无|语 ("phương nam mô ngữ", 南无 = nam mô),
-    // 方南松了口气 -> 方|南松|... ("Phương Nam Tùng"). Chỉ xét tên riêng của truyện (BOOK_NAME_MAP, gói name):
-    // tên chung như 和真 thì 我和真的 -> 和|真的 là tách đúng. Phần dư của từ bị cắt ghép với từ sau rồi dịch lại.
-    hit = matchSplitName(tokens, i, [maps[0], maps[1]]);
+    // 方南松了口气 -> 方|南松|... ("Phương Nam Tùng"). Chỉ xét tên riêng của truyện (BOOK_NAME_MAP, defaultname,
+    // gói name): tên chung như 和真 thì 我和真的 -> 和|真的 là tách đúng. Phần dư của từ bị cắt ghép với từ sau rồi dịch lại.
+    hit = matchSplitName(tokens, i, [maps[0], maps[1], maps[2]]);
     if (hit != null) {
       var j = i + hit.k, fallback = tokens[i].text;
       for (var x = i + 1; x < j; x++) fallback += tokens[x].sep + tokens[x].text;
