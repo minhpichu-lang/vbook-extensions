@@ -19,7 +19,7 @@
       "name": "Sáng Tác Việt",
       "author": "Pichu",
       "path": "https://raw.githubusercontent.com/minhpichu-lang/vbook-extensions/main/sangtacviet/plugin.zip",
-      "version": 15,
+      "version": 16,
       "source": "https://sangtacviet.com",
       "icon": "https://raw.githubusercontent.com/minhpichu-lang/vbook-extensions/main/sangtacviet/icon.png",
       "description": "Đọc truyện dịch tự động (convert) từ sangtacviet.com: qidian, fanqie, faloo, ciweimao...",
