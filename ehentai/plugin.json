@@ -1,0 +1,21 @@
+{
+  "metadata": {
+    "name": "E-Hentai",
+    "author": "Pichu",
+    "version": 1,
+    "source": "https://e-hentai.org",
+    "regexp": "^https?://e-hentai\\.org/g/\\d+/[0-9a-f]+/?$",
+    "description": "Đọc doujinshi/manga 18+ từ e-hentai.org (không cần đăng nhập)",
+    "locale": "vi_VN",
+    "tag": "nsfw",
+    "type": "comic"
+  },
+  "script": {
+    "home": "home.js",
+    "genre": "genre.js",
+    "detail": "detail.js",
+    "search": "search.js",
+    "toc": "toc.js",
+    "chap": "chap.js"
+  }
+}
