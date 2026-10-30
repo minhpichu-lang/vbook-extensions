@@ -1,7 +1,7 @@
 // Cấu hình tên miền dùng chung cho mọi script (nạp bằng load("site.js")).
 //
 // Domain chính: biến DOMAIN do người dùng đặt trong app, không có thì dùng mặc định bên dưới.
-//   - vbook 1.1.x: cài đặt extension -> "Add code" -> gõ: let DOMAIN = "https://vinahentai.pics";
+//   - vbook 1.1.x: cài đặt extension -> "Add code" -> gõ: let DOMAIN = "https://vinahentai.beer";
 //   - vbook bản mới: ô "Tên miền" (khóa config DOMAIN trong plugin.json).
 // Khi trang đổi tên miền (vd. .click -> .random), extension tự thích nghi theo thứ tự:
 //   1. Redirect: nếu domain cũ chuyển hướng sang domain mới, lấy domain mới từ URL cuối của response.
@@ -11,7 +11,7 @@
 // Chỉ khi domain chính không phải là trang truyện nữa (chết/404 không có nội dung) mới chạy bước 2, 3,
 // nên bình thường không tốn thêm request nào.
 
-var DEFAULT_BASE = configuredBase("https://vinahentai.pics");
+var DEFAULT_BASE = configuredBase("https://vinahentai.beer");
 var REMOTE_DOMAIN_URL = ""; // vd: "https://gist.githubusercontent.com/<user>/<id>/raw/domain.txt"
 var FALLBACK_BASES = [
   "https://vinahentai.com",
@@ -20,6 +20,7 @@ var FALLBACK_BASES = [
   "https://vinahentai.top",
   "https://vinahentai.site",
   "https://vinahentai.pics",
+  "https://vinahentai.beer",
 ];
 
 var HEADERS = {

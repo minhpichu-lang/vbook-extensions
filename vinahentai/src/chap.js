@@ -15,7 +15,7 @@ function execute(url) {
   if (!response.ok) return Response.error("Không tải được chương (HTTP " + response.status + ")");
   var html = "" + response.text();
 
-  // Ảnh trang nằm trên CDN riêng (hiện là vnht.vinahentai.click) dưới /manga-images/ —
+  // Ảnh trang nằm trên CDN riêng (hiện là vnht.vinahentai.beer) dưới /manga-images/ —
   // không cố định host để CDN đổi tên miền vẫn chạy. Dừng ở dấu nháy, dấu \, khoảng trắng hoặc thẻ HTML.
   var re = /https?:\/\/[^\/"'\\\s<>]+\/manga-images\/[^"'\\\s<>]+/g;
   var images = [];

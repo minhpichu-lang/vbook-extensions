@@ -7,7 +7,8 @@ function execute() {
   if (!response.ok) return Response.error("Không tải được danh sách thể loại (HTTP " + response.status + ")");
 
   var doc = response.html();
-  // Thẻ thể loại trong grid có div tiêu đề bên trong; link ở header/footer thì không -> bỏ qua
+  // Thẻ thể loại trong grid có tiêu đề .font-semibold bên trong (bản cũ là div, nay là span);
+  // link ở header/footer thì không -> bỏ qua
   var links = doc.select("a[href^='/genres/']");
   var result = [];
   var seen = {};
@@ -15,7 +16,7 @@ function execute() {
     var a = links.get(i);
     var href = "" + a.attr("href");
     if (seen[href]) continue;
-    var titleEl = first(a, "div.font-semibold");
+    var titleEl = first(a, "div.font-semibold, span.font-semibold");
     if (titleEl == null) continue;
     seen[href] = true;
     result.push({ title: ("" + titleEl.text()).trim(), input: href, script: "list.js" });

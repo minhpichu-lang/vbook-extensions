@@ -11,12 +11,17 @@ function execute(url, page) {
   if (response == null) return Response.error("Không kết nối được tới trang (đã thử mọi tên miền)");
   if (!response.ok) return Response.error("Không tải được danh sách (HTTP " + response.status + ")");
 
-  var items = parseCards(response.html());
+  var html = "" + response.text();
+  var items = parseCards(Html.parse(html));
 
-  // Chỉ /danh-sach và /genres/* có phân trang (trang ngoài phạm vi trả về 0 truyện).
+  // Chỉ /danh-sach và /genres/* có phân trang. Dữ liệu hydration có \"totalPages\",N;
+  // /danh-sach ngoài phạm vi vẫn trả về truyện nên phải dựa vào số này (không có thì dừng khi hết truyện).
+  // Ở trang cuối N trùng currentPage nên turbo-stream lược mất số (\"totalPages\",\"<khóa kế>\") -> dừng.
   // /leaderboard, /authors/*, /translators/* bỏ qua tham số page -> chỉ 1 trang.
   var paged = url.indexOf("/danh-sach") >= 0 || url.indexOf("/genres/") >= 0;
-  var next = paged && items.length > 0 ? "" + (pageNum + 1) : null;
+  var total = html.match(/\\"totalPages\\",(\d+|\\")/);
+  var more = !total || (total[1] != '\\"' && pageNum < parseInt(total[1], 10));
+  var next = paged && items.length > 0 && more ? "" + (pageNum + 1) : null;
   return Response.success(items, next);
 }
 
@@ -36,7 +41,8 @@ function parseCards(doc) {
     if (img == null) continue;
     seen[href] = true;
 
-    var name = ("" + a.attr("aria-label")).trim();
+    // Bìa bị che (thể loại bị ẩn) thì aria-label có thêm " — ảnh đang bị che, chạm để bỏ che"
+    var name = ("" + a.attr("aria-label")).replace(/\s*—\s*ảnh đang bị che.*$/, "").trim();
     if (!name) {
       var t = first(a, "h2, h3, div.font-semibold");
       name = t != null ? ("" + t.text()).trim() : ("" + img.attr("alt")).trim();
