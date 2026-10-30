@@ -36,6 +36,17 @@
       "description": "Đọc truyện hentai 18+ vietsub từ hentaivnx.live",
       "type": "comic",
       "locale": "vi_VN"
+    },
+    {
+      "name": "Sắc Hiệp Viện",
+      "author": "Pichu",
+      "path": "https://raw.githubusercontent.com/minhpichu-lang/vbook-extensions/main/sachiepvien/plugin.zip",
+      "version": 1,
+      "source": "https://sachiepvien.net",
+      "icon": "https://raw.githubusercontent.com/minhpichu-lang/vbook-extensions/main/sachiepvien/icon.png",
+      "description": "Đọc truyện full (file .txt trên Mega) từ sachiepvien.net",
+      "type": "novel",
+      "locale": "vi_VN"
     }
   ]
 }

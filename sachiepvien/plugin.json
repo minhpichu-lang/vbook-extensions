@@ -1,0 +1,21 @@
+{
+  "metadata": {
+    "name": "Sắc Hiệp Viện",
+    "author": "Pichu",
+    "version": 1,
+    "source": "https://sachiepvien.net",
+    "regexp": "^https?://(www\\.)?sachiepvien\\.net/[^/?#]+/?$",
+    "description": "Đọc truyện full (file .txt trên Mega) từ sachiepvien.net",
+    "locale": "vi_VN",
+    "tag": "nsfw",
+    "type": "novel"
+  },
+  "script": {
+    "home": "home.js",
+    "genre": "genre.js",
+    "detail": "detail.js",
+    "search": "search.js",
+    "toc": "toc.js",
+    "chap": "chap.js"
+  }
+}
