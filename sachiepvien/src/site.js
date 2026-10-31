@@ -13,7 +13,8 @@ var HEADERS = {
   "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
 };
 var DEFAULT_COVER = BASE + "/wp-content/uploads/2018/10/favicon2-300x300.png"; // bài viết không có ảnh bìa
-var PER_PAGE = 24;
+// App chỉ tải trang sau khi cuộn tới cuối; trên tablet (Y700) 24 truyện vừa một màn hình, không cuộn được nên không tải thêm
+var PER_PAGE = 60;
 // Trang nhẹ, https (crypto.subtle cần secure context), cùng origin với API Mega.
 // KHÔNG dùng "https://g.api.mega.co.nz/": redirect sang web app mega.nz, nặng tới mức làm treo engine.
 var WEB_ORIGIN = "https://g.api.mega.co.nz/cs";

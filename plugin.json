@@ -41,7 +41,7 @@
       "name": "Sắc Hiệp Viện",
       "author": "Pichu",
       "path": "https://raw.githubusercontent.com/minhpichu-lang/vbook-extensions/main/sachiepvien/plugin.zip",
-      "version": 1,
+      "version": 2,
       "source": "https://sachiepvien.net",
       "icon": "https://raw.githubusercontent.com/minhpichu-lang/vbook-extensions/main/sachiepvien/icon.png",
       "description": "Đọc truyện full (file .txt trên Mega) từ sachiepvien.net",
